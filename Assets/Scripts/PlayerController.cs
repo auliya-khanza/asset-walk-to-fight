@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
@@ -16,12 +18,20 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float jumpforce = 9f;
     [SerializeField] private float hurtForce = 3f;
 
+    public TextMeshProUGUI cherryText;
+    private int cherries = 0;
+
+    //Health
+    public TextMeshProUGUI healthAmount;
+    private int health = 5;
+
     // Start is called before the first frame update
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         coll = GetComponent<Collider2D>();
+        healthAmount.text = health.ToString();
     }
 
     // Update is called once per frame
@@ -43,8 +53,7 @@ public class PlayerController : MonoBehaviour
             }
             //jump
             if(Input.GetKeyDown(KeyCode.Space) && coll.IsTouchingLayers(ground)){
-                rb.velocity = new Vector2(rb.velocity.x, jumpforce);
-                state = State.jumping;
+                Jump();
             }
         }
         
@@ -54,6 +63,12 @@ public class PlayerController : MonoBehaviour
 
     private void Attack(){
         anim.SetTrigger("Attack");
+    }
+
+    private void Jump()
+    {
+        rb.velocity = new Vector2(rb.velocity.x, jumpforce);
+        state = State.jumping;
     }
 
     private void AnimationState()
@@ -85,6 +100,54 @@ public class PlayerController : MonoBehaviour
         else
         {
             state = State.idle; //switch to idle
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.tag == "Collectable")
+        {
+            Destroy(collision.gameObject);
+            cherries += 1;
+            cherryText.text = cherries.ToString();
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D other)
+    {
+        EnemyController enemy = other.gameObject.GetComponent<EnemyController>();
+        if(other.gameObject.tag == "Enemy")
+        {
+            if (state == State.falling)
+            {
+                enemy.JumpedOn();
+                Jump();
+            }
+            else
+            {
+                state = State.hurt;
+                HandleHealth();
+                if (other.gameObject.transform.position.x > transform.position.x)
+                {
+                    //enemy is to my right therefore i should be damaged
+                    rb.velocity = new Vector2(-hurtForce, rb.velocity.y);
+                }
+                else
+                {
+                    //enemy is to my left therefore i should be damaged
+                    rb.velocity = new Vector2(hurtForce, rb.velocity.y);
+                }
+            }
+        }
+    }
+
+    private void HandleHealth()
+    {
+        health -= 1;
+        healthAmount.text = health.ToString();
+        if (health <= 0)
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
     }
 }
